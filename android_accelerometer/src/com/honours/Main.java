@@ -6,10 +6,6 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.widget.Button;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -17,7 +13,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.content.DialogInterface;
-import java.math.RoundingMode;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -43,31 +38,14 @@ import android.widget.Toast;
 
 
 
-public class Main extends FragmentActivity implements OnClickListener, OnMarkerClickListener, AlertPositiveListener, SensorEventListener {
+public class Main extends FragmentActivity implements OnClickListener, OnMarkerClickListener, AlertPositiveListener {
 	
 	//sensor values
-	private double mLastX, mLastY, mLastZ;
-	private boolean mInitialized;
-	private SensorManager mSensorManager;
-    private Sensor mlin; 
-    private Sensor maccel; 
-    private final double NOISE = (float) 0.04;
-   
+
     // layout values   
     private Button startButton;
     private Button location;
-    private TextView textTime;
-    private TextView Speed;
-    private TextView velo;
-    private TextView tvX;
-    private TextView tvY;
-    private TextView tvZ;
-    private TextView tdistanc;
-    private ImageView iv; 
-    private TextView maxx;
-    private TextView maxy;
-    private TextView maxz;
-    
+    private TextView textTime;   
     
  // timer values
     private long startTime = 0L;
@@ -77,14 +55,12 @@ public class Main extends FragmentActivity implements OnClickListener, OnMarkerC
 	long updatedTime = 0L;
     
 	// sesnor+misc values
-    double GX;
+	int latx1=0;
+	int latx2=0;
+
+	
     double time=0;
-    double oldx=0;
-    double constu;
-    double Velo;
-    double dist;
     double ndist=0;
-    double velocity;
     double en_bu=515;
     
     Double latcur;
@@ -135,28 +111,12 @@ public class Main extends FragmentActivity implements OnClickListener, OnMarkerC
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         //sensor initialisation
-        mInitialized = false;
-        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        mlin = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        maccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        mSensorManager.registerListener(this, mlin, SensorManager.SENSOR_DELAY_NORMAL);  
-        mSensorManager.registerListener(this, maccel, SensorManager.SENSOR_DELAY_NORMAL);  
+
            
         //asign buttons
         textTime = (TextView) findViewById(R.id.textTime);
         startButton = (Button) findViewById(R.id.b_start);
-		tvX = (TextView)findViewById(R.id.x_axis);
-		tvY= (TextView)findViewById(R.id.y_axis);
-		tvZ= (TextView)findViewById(R.id.z_axis);
-		iv = (ImageView)findViewById(R.id.image);
-		Speed= (TextView)findViewById(R.id.t_speed);
-		tdistanc=(TextView)findViewById(R.id.t_distance);
 		location = (Button) findViewById(R.id.b_location);
-		
-		
-		maxx = (TextView)findViewById(R.id.x_max);
-		maxy= (TextView)findViewById(R.id.y_max);
-		maxz= (TextView)findViewById(R.id.z_max);
 		
 		//set up the map fragment
 		map  = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
@@ -196,6 +156,11 @@ public class Main extends FragmentActivity implements OnClickListener, OnMarkerC
 		
         startButton.setOnClickListener(new View.OnClickListener() {	
 			public void onClick(View view) {
+				if(statlat==0)
+					
+					Toast.makeText(getApplicationContext(), 
+			                ( "Please select your locations first" ), Toast.LENGTH_LONG).show();
+				else
 				startTime = SystemClock.uptimeMillis();
 				customHandler.postDelayed(updateTimerThread, 0);
 			}	});
@@ -213,13 +178,11 @@ public class Main extends FragmentActivity implements OnClickListener, OnMarkerC
 					+ String.format("%02d", secs));
 					customHandler.postDelayed(this, 500);
 					
-			movemarker(updatedTime);
-			
-			
+			movemarker(updatedTime);				
 		}};
 		
 		
-		public void movemarker(long time)
+	public void movemarker(long time)
 		{	
 			if (time>400 && time<50700) ker.setVisible(false);
 			
@@ -228,139 +191,48 @@ public class Main extends FragmentActivity implements OnClickListener, OnMarkerC
 				perlat=statlat/100;
 				perlon=statlon/100;
 				
-				latcur=latcur+perlat;
-				loncur=loncur-perlon;
+				/*						  				
+				 down 
+				 latcur=latcur-perlat;
+
+				right
+				
+				loncur=loncur-perlon;			  
+				  
+				  left
+				 
+				loncur=loncur+perlon;			  
+				  */
+				
+				if(latx1==1)	{loncur=loncur-perlon;}
+				else		{	latcur=latcur+perlat;}
+				
+				if(latx2==1)
+				{loncur=loncur-perlon;}
+				else
+					{loncur=loncur+perlon;}
 				
 			ker=map.addMarker(new MarkerOptions().position(new LatLng(latcur, -loncur)).visible(true)
 						.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));	
-			movex++;
-				
-			}	
-			
+			movex++;			
+			}			
 		}
 		
 
     protected void onResume() {
-        super.onResume();
-        mSensorManager.registerListener(this, mlin, SensorManager.SENSOR_DELAY_NORMAL);
-       // mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        super.onResume();       
     }
 
     protected void onPause() {
-        super.onPause();
-        mSensorManager.unregisterListener(this);
+        super.onPause();     
     }
-
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		// can be safely ignored for this demo
-	}
-
-	@Override
-	public void onSensorChanged(SensorEvent event) {
-		if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-	        // Accelerometer Sensor
-	    
-		double x = event.values[0];
-		double y = event.values[1];
-		double z = event.values[2];
-		
-							
-		if (!mInitialized) {
-			mLastX = x;
-			mLastY = y;
-			mLastZ = z;
-			tvX.setText("0.0");
-			tvY.setText("0.0");
-			tvZ.setText("0.0");		
-			mInitialized = true;
-		} else {
-			double noX=x;
-			double noY=y;
-			double noZ=z;
-		if ((noX>0.0) && (noX < NOISE)) noX = (float)0.0;
-		else if ((noX<0.0) && (noX > -NOISE)) noX = (float)0.0;
-		
-		if ((noY>0.0) && (noY < NOISE)) noY = (float)0.0;
-		else if ((noY<0.0) && (noY > -NOISE)) noY = (float)0.0;
-		
-		if ((noZ>0.0) && (noZ < NOISE)) noZ = (float)0.0;
-		else if ((noZ<0.0) && (noZ > -NOISE)) noZ = (float)0.0;
-		
-			Velo= noX;				
-			mLastX = x;
-			mLastY = y;
-			mLastZ = z;
-
-			tvX.setText(Double.toString(Math.floor( noX * 100.0 ) / 100.0));
-			tvY.setText(Double.toString(Math.floor( noY * 100.0 ) / 100.0));
-			tvZ.setText(Double.toString(Math.floor( noZ * 100.0 ) / 100.0));		
 	
-			iv.setVisibility(View.VISIBLE);
-			
-		}
-		
-		}
-		else if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-	        // Accelerometer Sensor
-			double x = event.values[0];
-			double y = event.values[1];
-			double z = event.values[2];
-			
-			if (!mInitialized) {
-				mLastX = x;
-				mLastY = y;
-				mLastZ = z;
-				Speed.setText("0.0");
-				maxx.setText("0.0");
-				maxy.setText("0.0");
-				maxz.setText("0.0");
-				
-				mInitialized = true;
-				
-			} else {
-				double noX=x;
-				double noY=y;
-				double noZ=z;
-				
-				//high pass filter
-			if ((noX>0.0) && (noX < NOISE)) noX = (float)0.0;
-			else if ((noX<0.0) && (noX > -NOISE)) noX = (float)0.0;
-			
-			if ((noY>0.0) && (noY < NOISE)) noY = (float)0.0;
-			else if ((noY<0.0) && (noY > -NOISE)) noY = (float)0.0;
-			
-			if ((noZ>0.0) && (noZ < NOISE)) noZ = (float)0.0;
-			else if ((noZ<0.0) && (noZ > -NOISE)) noZ = (float)0.0;
-			
-			//get time for calculation
-			time= (updatedTime - time);
-			
-			//get acceleration along X
-			GX=(noX*9.8);
-			//first equation
-			velocity=(GX-oldx)/time;			
-			oldx=GX;
-			
-			//S = u* t + 1/2at2
-			//second equation
-			dist=(oldx*time)+(GX/2)*(time*time);
-			ndist=ndist+dist;
-			
-			
-			Speed.setText(Double.toString(Math.floor( velocity * 100.0 ) / 100.0));
-			tdistanc.setText(Double.toString(Math.floor( ndist * 100.0 ) / 100.0));
-			maxx.setText(Double.toString(Math.floor( noX * 100.0 ) / 100.0));
-			maxy.setText(Double.toString(Math.floor( noY * 100.0 ) / 100.0));
-			maxz.setText(Double.toString(Math.floor( noZ * 100.0 ) / 100.0));
-			
-			iv.setVisibility(View.VISIBLE);
-			
-	    }
-		}
-		
-		
-	}
+    
+    @Override
+    protected void onStop() {
+        super.onStop();
+       //write your code here to start your service
+    }
 
 	public void newLine(LatLng current, LatLng nxtcurrent)
 	{
@@ -376,15 +248,19 @@ public class Main extends FragmentActivity implements OnClickListener, OnMarkerC
 		latnxt=nxtcurrent.latitude;
 		lonnxt=nxtcurrent.longitude;
 		
-		if( latcur<0) latcur=-latcur;
-		if( loncur<0) loncur=-loncur;
-		if( latnxt<0) latnxt=-latnxt;
-		if( lonnxt<0) lonnxt =-lonnxt;
+		 if( latcur<0) latcur=-latcur;
+		 if( loncur<0) loncur=-loncur;
+		 if( latnxt<0) latnxt=-latnxt;
+		 if( lonnxt<0) lonnxt =-lonnxt;
 		
-		if(latcur >latnxt) statlat=latcur-latnxt;
-		else statlat=latnxt- latcur;
+		if(latcur >latnxt){ statlat=latcur-latnxt;
+		latx1=1;
+		}
+		else statlat=latnxt - latcur;
 		
-		if(loncur >lonnxt) statlon=loncur-lonnxt;
+		if(loncur >lonnxt){ statlon=loncur-lonnxt;
+		latx2=1;}
+		
 		else statlon=lonnxt- loncur;
 				
 		String test= Double.toString(statlat);
@@ -444,30 +320,30 @@ public class Main extends FragmentActivity implements OnClickListener, OnMarkerC
 		  OnClickListener listener = new OnClickListener() {			
 				@Override
 				public void onClick(View v) {
-					/** Getting the fragment manager */
+					// Getting the fragment manager 
 					FragmentManager manager = getFragmentManager();
 					
-					/** Instantiating the DialogFragment class */
+					// Instantiating the DialogFragment class 
 					AlertDialogRadio alert = new AlertDialogRadio();
 					
-					/** Creating a bundle object to store the selected item's index */
+					// Creating a bundle object to store the selected item's index 
 					Bundle b  = new Bundle();
 					
-					/** Storing the selected item's index in the bundle object */
+					// Storing the selected item's index in the bundle object 
 					b.putInt("position", position);
 					
-					/** Setting the bundle object to the dialog fragment object */
+					// Setting the bundle object to the dialog fragment object 
 					alert.setArguments(b);
 					
-					/** Creating the dialog fragment object, which will in turn open the alert dialog window */
+					// Creating the dialog fragment object, which will in turn open the alert dialog window 
 					alert.show(manager, "alert_dialog_radio");			
 					
 				}
 			};
-			 /** Getting the reference of the button from the main layout */
+			 // Getting the reference of the button from the main layout 
 	        Button btn = (Button) findViewById(R.id.b_location);
 	        
-	        /** Setting a button click listener for the choose button */
+	        //Setting a button click listener for the choose button 
 	        btn.setOnClickListener(listener);          
 		
 	}
